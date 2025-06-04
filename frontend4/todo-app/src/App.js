@@ -3,34 +3,55 @@ import './App.css';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [isSignupMode, setIsSignupMode] = useState(false); // Toggle between login/signup
 
-  // Handle signup/login
-  const handleAuth = (e) => {
+  // Load all users from localStorage
+  const getUsers = () => {
+    return JSON.parse(localStorage.getItem('users')) || [];
+  };
+
+  // Handle login
+  const handleLogin = (e) => {
     e.preventDefault();
-    const storedUser = JSON.parse(localStorage.getItem('user'));
+    const users = getUsers();
+    const user = users.find(
+      (u) => u.username === username && u.password === password
+    );
 
-    if (!storedUser) {
-      // Signup (first-time user)
-      localStorage.setItem('user', JSON.stringify({ username, password }));
+    if (user) {
       setIsLoggedIn(true);
+      setCurrentUser(user);
       setAuthError('');
     } else {
-      // Login (existing user)
-      if (storedUser.username === username && storedUser.password === password) {
-        setIsLoggedIn(true);
-        setAuthError('');
-      } else {
-        setAuthError('Invalid username or password!');
-      }
+      setAuthError('Invalid username or password!');
     }
   };
 
-  // Logout
+  // Handle signup
+  const handleSignup = (e) => {
+    e.preventDefault();
+    const users = getUsers();
+    const userExists = users.some((user) => user.username === username);
+
+    if (userExists) {
+      setAuthError('Username already taken!');
+    } else {
+      const newUser = { username, password };
+      localStorage.setItem('users', JSON.stringify([...users, newUser]));
+      setIsLoggedIn(true); // Auto-login after signup
+      setCurrentUser(newUser);
+      setAuthError('');
+    }
+  };
+
+  // Handle logout
   const handleLogout = () => {
     setIsLoggedIn(false);
+    setCurrentUser(null);
     setUsername('');
     setPassword('');
   };
@@ -39,13 +60,16 @@ function App() {
     <div className="app">
       {isLoggedIn ? (
         <div className="dashboard">
-          <h2>Welcome, {username}!</h2>
+          <h2>Welcome, {currentUser.username}!</h2>
           <p>This is your secure dashboard.</p>
           <button onClick={handleLogout}>Logout</button>
         </div>
       ) : (
-        <form onSubmit={handleAuth} className="auth-form">
-          <h2>{localStorage.getItem('user') ? 'Login' : 'Sign Up'}</h2>
+        <form
+          onSubmit={isSignupMode ? handleSignup : handleLogin}
+          className="auth-form"
+        >
+          <h2>{isSignupMode ? 'Sign Up' : 'Login'}</h2>
           {authError && <p className="error">{authError}</p>}
           <input
             type="text"
@@ -61,7 +85,20 @@ function App() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          <button type="submit">{localStorage.getItem('user') ? 'Login' : 'Sign Up'}</button>
+          <button type="submit">{isSignupMode ? 'Sign Up' : 'Login'}</button>
+          <p className="toggle-mode">
+            {isSignupMode ? (
+              <>
+                Already have an account?{' '}
+                <span onClick={() => setIsSignupMode(false)}>Login</span>
+              </>
+            ) : (
+              <>
+                Don't have an account?{' '}
+                <span onClick={() => setIsSignupMode(true)}>Sign Up</span>
+              </>
+            )}
+          </p>
         </form>
       )}
     </div>
